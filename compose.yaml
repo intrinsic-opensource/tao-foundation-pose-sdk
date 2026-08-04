@@ -1,0 +1,122 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Base Docker Compose configuration — shared across all platforms.
+# Do not invoke directly; use one of:
+#   ./run_dev.sh [args]                                                 # auto-detects platform
+#   docker compose [args]                                               # dGPU/x86 (compose.override.yaml auto-loaded)
+#   docker compose -f compose.yaml -f compose.thor.yaml [args]         # Jetson AGX Thor
+#
+# Setup:   cp .env.example .env   # then adjust the FP_* paths
+# One-shot:
+#   ./run_dev.sh run --rm build                    # compile the library
+#   ./run_dev.sh run --rm cli --smoke ...          # diagnostic CLI
+#   ./run_dev.sh run --rm bench --benchmark ...    # BOP YCB-V benchmark
+#   ./run_dev.sh run --rm test                     # tests/ (group API)
+# Detached:
+#   ./run_dev.sh up -d dev
+#   ./run_dev.sh exec dev bash
+#   ./run_dev.sh down
+#
+# Requires Docker Compose >= 2.30 (for the `gpus` service attribute).
+
+x-gpu-common: &gpu-common          # GPU access injected by compose.override.yaml or compose.thor.yaml
+  ipc: host
+  user: "${FP_UID:-1000}:${FP_GID:-1000}"
+  working_dir: /work
+  volumes:
+    - .:/work
+    - ${FP_DATA_DIR:-./data}:/work/data
+    - ${FP_WEIGHTS_DIR:-./weights}:/work/weights
+    - ${FP_ENGINE_CACHE_DIR:-./engine_cache}:/work/engine_cache
+
+# Default FP_* paths consumed by docker/docker_benchmark.sh and
+# tests/test_group_api.py; flags passed on the command line still win.
+x-fp-env: &fp-env
+  HOME: /tmp
+  FP_BOP_PATH: /work/data/BOP_datasets
+  FP_REFINE_MODEL_PATH: /work/weights/refiner_net.onnx
+  FP_SCORE_MODEL_PATH: /work/weights/score_net.onnx
+  FP_LIBRARY: /work/build/libfoundation_pose_nvidia.so
+  FP_ENGINE_CACHE_DIR: /work/engine_cache
+  # Headless software EGL for the BOP vispy evaluator (harmless otherwise).
+  EGL_PLATFORM: surfaceless
+  LIBGL_ALWAYS_SOFTWARE: "1"
+  GALLIUM_DRIVER: llvmpipe
+  __EGL_VENDOR_LIBRARY_FILENAMES: /usr/share/glvnd/egl_vendor.d/50_mesa.json
+  LD_LIBRARY_PATH: /work/build:/usr/lib/x86_64-linux-gnu
+
+services:
+  # Compile the library + CLI (fetches and patches nvdiffrast if missing).
+  build:
+    <<: *gpu-common
+    image: nvcr.io/nvidia/pytorch:26.05-py3
+    environment:
+      HOME: /tmp
+      BUILD_JOBS: ${BUILD_JOBS:-4}
+    command: bash docker/docker_build.sh
+
+  # Diagnostic CLI, e.g.: docker compose run --rm cli --smoke --mode register ...
+  cli:
+    <<: *gpu-common
+    image: nvcr.io/nvidia/pytorch:26.05-py3
+    environment: *fp-env
+    entrypoint: ["./build/foundation_pose_nvidia_cli"]
+
+  # Unified example runner. Runs both C++ and Python examples by default.
+  #   docker compose run --rm sample_app              # run both
+  #   docker compose run --rm sample_app cpp          # C++ only (BOP mode)
+  #   docker compose run --rm sample_app cpp --use_synthesize  # C++ synthetic
+  #   docker compose run --rm sample_app python        # Python only (BOP mode)
+  #   docker compose run --rm sample_app python --use_synthesize
+  #   docker compose run --rm sample_app python_multi  # Python multi-object (BOP mode)
+  sample_app:
+    <<: *gpu-common
+    image: fp-bench:latest
+    environment: *fp-env
+    entrypoint: ["bash", "scripts/run_sample.sh"]
+
+  # BOP YCB-V benchmark, e.g.:
+  #   docker compose run --rm bench --benchmark --mode register --max-targets 75
+  # (dataset/weights/library/cache paths come from FP_* env; override with flags)
+  bench:
+    <<: *gpu-common
+    image: fp-bench:latest
+    build:
+      context: .
+      dockerfile: docker/benchmark.Dockerfile
+    environment: *fp-env
+    entrypoint: ["bash", "docker/docker_benchmark.sh"]
+
+  # End-to-end C API tests: docker compose run --rm test
+  test:
+    <<: *gpu-common
+    image: fp-bench:latest
+    build:
+      context: .
+      dockerfile: docker/benchmark.Dockerfile
+    environment: *fp-env
+    entrypoint: ["/opt/bench/bin/python"]
+    command: ["tests/test_group_api.py"]
+
+  # Long-running container for the docker exec workflow.
+  dev:
+    <<: *gpu-common
+    image: fp-bench:latest
+    build:
+      context: .
+      dockerfile: docker/benchmark.Dockerfile
+    environment: *fp-env
+    command: ["sleep", "infinity"]
+
+  # Doxygen API reference without a host doxygen (CPU-only, runs as root to
+  # apt-get, then chowns the output back to the caller).
+  docs:
+    image: ubuntu:24.04
+    working_dir: /work
+    volumes:
+      - .:/work
+    command: >
+      bash -c "apt-get update -qq && apt-get install -y -qq doxygen >/dev/null
+      && doxygen doc/Doxyfile
+      && chown -R ${FP_UID:-1000}:${FP_GID:-1000} doc/api"

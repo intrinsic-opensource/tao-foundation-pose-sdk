@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# dGPU (x86_64) overlay — auto-loaded by Docker Compose on top of compose.yaml.
+# Adds `gpus: all` to every GPU-capable service.
+# On Jetson AGX Thor, use compose.thor.yaml instead (via ./run_dev.sh or explicit -f flags).
+
+x-dgpu: &dgpu
+  gpus: all
+
+services:
+  build:      { <<: *dgpu }
+  cli:        { <<: *dgpu }
+  sample_app: { <<: *dgpu }
+  bench:      { <<: *dgpu }
+  test:       { <<: *dgpu }
+  dev:        { <<: *dgpu }

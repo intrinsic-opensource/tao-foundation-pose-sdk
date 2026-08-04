@@ -1,0 +1,138 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+"""Typed wrapper around the FoundationPose C ABI (ctypes)."""
+
+from __future__ import annotations
+
+import ctypes as C
+from pathlib import Path
+
+from foundation_pose_nvidia.bindings._ctypes_types import (
+    Config,
+    CreateOptions,
+    ImageView,
+    PoseResult,
+    ReferenceImageView,
+)
+from foundation_pose_nvidia.bindings._loader import resolve_library_path
+from foundation_pose_nvidia.exceptions import FoundationPoseError
+
+
+class FPLibrary:
+    """Low-level bindings to libfoundation_pose_nvidia.so."""
+
+    def __init__(self, path: Path | str | None = None, *, print_build_info: bool = True):
+        self.path = resolve_library_path(path)
+        self._lib = C.CDLL(str(self.path))
+        self._bind_core()
+        if print_build_info:
+            print(self.build_info)
+
+    @property
+    def cdll(self) -> C.CDLL:
+        """Raw ctypes handle for advanced callers (e.g. group API tests)."""
+        return self._lib
+
+    @property
+    def build_info(self) -> str:
+        return self._lib.fp_build_info().decode("utf-8")
+
+    def default_config(self) -> Config:
+        config = Config()
+        self._lib.fp_default_config(C.byref(config))
+        return config
+
+    def synchronize(self, err_size: int = 1024) -> None:
+        err = C.create_string_buffer(err_size)
+        if self._lib.fp_synchronize_device(err, len(err)) != 0:
+            raise FoundationPoseError(err.value.decode("utf-8"))
+
+    def bind_group_api(self, object_count: int) -> None:
+        mask_array = C.POINTER(C.c_uint8) * object_count
+        lib = self._lib
+        lib.fp_group_create.restype = C.c_void_p
+        lib.fp_group_create.argtypes = [
+            C.POINTER(CreateOptions),
+            C.c_size_t,
+            C.POINTER(Config),
+            C.c_char_p,
+            C.c_size_t,
+        ]
+        lib.fp_group_size.restype = C.c_size_t
+        lib.fp_group_size.argtypes = [C.c_void_p]
+        lib.fp_group_handle.restype = C.c_void_p
+        lib.fp_group_handle.argtypes = [C.c_void_p, C.c_size_t]
+        lib.fp_group_prepare.restype = C.c_int
+        lib.fp_group_prepare.argtypes = [C.c_void_p, C.c_int, C.c_char_p, C.c_size_t]
+        lib.fp_group_register_frame.restype = C.c_int
+        lib.fp_group_register_frame.argtypes = [
+            C.c_void_p,
+            C.POINTER(ImageView),
+            mask_array,
+            C.c_int,
+            C.c_int,
+            C.POINTER(PoseResult),
+            C.POINTER(C.c_int),
+            C.c_char_p,
+            C.c_size_t,
+        ]
+        lib.fp_group_track_frame.restype = C.c_int
+        lib.fp_group_track_frame.argtypes = [
+            C.c_void_p,
+            C.POINTER(ImageView),
+            C.POINTER(C.c_int),
+            C.c_int,
+            C.POINTER(PoseResult),
+            C.POINTER(C.c_int),
+            C.c_char_p,
+            C.c_size_t,
+        ]
+        lib.fp_group_destroy.restype = None
+        lib.fp_group_destroy.argtypes = [C.c_void_p]
+
+    def _bind_core(self) -> None:
+        lib = self._lib
+        lib.fp_default_config.argtypes = [C.POINTER(Config)]
+        lib.fp_default_config.restype = None
+        lib.fp_create.argtypes = [C.POINTER(CreateOptions), C.POINTER(Config), C.c_char_p, C.c_size_t]
+        lib.fp_create.restype = C.c_void_p
+        lib.fp_create_model_free.argtypes = [
+            C.POINTER(ReferenceImageView),
+            C.c_size_t,
+            C.POINTER(CreateOptions),
+            C.POINTER(Config),
+            C.c_char_p,
+            C.c_size_t,
+        ]
+        lib.fp_create_model_free.restype = C.c_void_p
+        lib.fp_prepare.argtypes = [C.c_void_p, C.c_int, C.c_char_p, C.c_size_t]
+        lib.fp_prepare.restype = C.c_int
+        lib.fp_destroy.argtypes = [C.c_void_p]
+        lib.fp_destroy.restype = None
+        lib.fp_register_frame.argtypes = [
+            C.c_void_p,
+            C.POINTER(ImageView),
+            C.c_int,
+            C.c_int,
+            C.POINTER(PoseResult),
+            C.c_char_p,
+            C.c_size_t,
+        ]
+        lib.fp_register_frame.restype = C.c_int
+        lib.fp_track_frame.argtypes = [
+            C.c_void_p,
+            C.POINTER(ImageView),
+            C.c_int,
+            C.POINTER(PoseResult),
+            C.c_char_p,
+            C.c_size_t,
+        ]
+        lib.fp_track_frame.restype = C.c_int
+        lib.fp_synchronize_device.argtypes = [C.c_char_p, C.c_size_t]
+        lib.fp_synchronize_device.restype = C.c_int
+        lib.fp_build_info.argtypes = []
+        lib.fp_build_info.restype = C.c_char_p
+
+
+def load_library(path: Path | str | None = None, *, print_build_info: bool = True) -> FPLibrary:
+    return FPLibrary(path, print_build_info=print_build_info)

@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Doxygen configuration for the FoundationPose runtime C API.
+# Run from the repository root:
+#     doxygen doc/Doxyfile
+# Output: doc/api/html/index.html  (the C API "Getting Started" main page).
+
+PROJECT_NAME           = "NVIDIA FoundationPose Runtime"
+PROJECT_BRIEF          = "C ABI for 6-DoF object pose estimation and tracking (CUDA / TensorRT)"
+OUTPUT_DIRECTORY       = doc/api
+
+# --- Inputs -----------------------------------------------------------------
+# The public headers (c_api.h carries the \mainpage getting-started guide) plus
+# the architecture doc as an extra page.
+INPUT                  = include doc/ARCHITECTURE.md
+FILE_PATTERNS          = *.h *.hpp *.md
+RECURSIVE              = YES
+
+# --- Extraction -------------------------------------------------------------
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+OPTIMIZE_OUTPUT_FOR_C  = YES
+JAVADOC_AUTOBRIEF      = YES
+MARKDOWN_SUPPORT       = YES
+AUTOLINK_SUPPORT       = YES
+TYPEDEF_HIDES_STRUCT   = YES
+SORT_MEMBER_DOCS       = NO
+
+# --- Output -----------------------------------------------------------------
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+SOURCE_BROWSER         = YES
+
+# --- Diagnostics ------------------------------------------------------------
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARNINGS               = YES
+
+# --- Diagrams (used only if `dot` from Graphviz is installed) ---------------
+HAVE_DOT               = NO

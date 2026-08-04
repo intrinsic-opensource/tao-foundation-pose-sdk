@@ -1,0 +1,46 @@
+# Build output
+build/
+*.o
+*.so
+*.plan
+
+# Fetched dependency (cloned by docker/docker_build.sh)
+external/
+
+# Generated Doxygen API docs
+doc/api/
+
+# TensorRT engine caches
+engine_cache/
+engine_cache_*/
+
+# Large local model/data artifacts
+weights/
+data/
+
+# Benchmark outputs
+benchmarks/results/
+
+# Python envs / caches
+.venv*/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Machine-local docker compose config (copy from .env.example)
+.env
+
+# Editor / OS
+.DS_Store
+*.swp
+
+# Example app build outputs
+example/*/results/
+example/cpp/sample_app_cpp
+
+# Weight files
+weights/
+
+# Dataset (top-level BOP mount only)
+/data
+

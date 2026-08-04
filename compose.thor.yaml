@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Jetson AGX Thor (aarch64) overlay — merge on top of compose.yaml:
+#   docker compose -f compose.yaml -f compose.thor.yaml [args]
+#   (or just: ./run_dev.sh [args] on an aarch64 host)
+#
+# GPU access (JetPack 7 / L4T R38): `gpus: all` does not work on Thor, and even
+# `runtime: nvidia` alone leaves the container without a CUDA device because the
+# shipped devices.csv lists a stale Tegra node layout. So we inject Thor's real
+# iGPU nodes explicitly. Verified: torch.cuda.is_available() == True ("Thor").
+#
+# Merge semantics (Docker Compose >= 2.30):
+#   volumes            → list-append  (base mounts + /dev/nvgpu* mounts)
+#   environment        → key-merge    (fp-env vars inherited; LD_LIBRARY_PATH overridden)
+#   runtime/devices/
+#   device_cgroup_rules → replacement (base does not define these)
+
+x-thor-gpu: &thor-gpu
+  runtime: nvidia                    # mounts Tegra driver libs (via drivers.csv)
+  devices:                           # Thor iGPU nodes (devices.csv is stale on R38)
+    - /dev/nvidia0
+    - /dev/nvidia1
+    - /dev/nvidiactl
+    - /dev/nvidia-modeset
+    - /dev/nvmap
+  device_cgroup_rules:
+    - "c 195:* rmw"                  # /dev/nvidia*
+    - "c 490:* rmw"                  # /dev/nvgpu-pci/*
+    - "c 10:* rmw"                   # /dev/nvmap
+  volumes:                           # appended to base volumes
+    - /dev/nvgpu:/dev/nvgpu          # iGPU compute nodes (igpu-<pci>/*)
+    - /dev/nvgpu-pci:/dev/nvgpu-pci  # iGPU PCI nodes (card-<pci>*)
+
+x-thor-env: &thor-env
+  LD_LIBRARY_PATH: /work/build:/usr/lib/aarch64-linux-gnu
+
+services:
+  build:
+    <<: *thor-gpu
+    environment:
+      HOME: /tmp
+      CUDA_ARCHITECTURES: native       # auto-detect Thor SM
+      BUILD_JOBS: ${BUILD_JOBS:-4}
+
+  cli:        { <<: *thor-gpu, environment: { <<: *thor-env } }
+  sample_app: { <<: *thor-gpu, environment: { <<: *thor-env } }
+  bench:      { <<: *thor-gpu, environment: { <<: *thor-env } }
+  test:       { <<: *thor-gpu, environment: { <<: *thor-env } }
+  dev:        { <<: *thor-gpu, environment: { <<: *thor-env } }
