@@ -27,6 +27,7 @@ class RuntimeConfig:
     """Python-facing runtime configuration (maps to fp_config_t)."""
 
     n_hypotheses: int | None = None
+    batch_size: int | None = None
     n_refine_iters: int | None = None
     n_track_iters: int | None = None
     crop_ratio: float | None = None
@@ -52,6 +53,7 @@ class RuntimeConfig:
     def from_ctypes(cls, config: Config) -> RuntimeConfig:
         return cls(
             n_hypotheses=config.n_hypotheses,
+            batch_size=config.batch_size,
             n_refine_iters=config.n_refine_iters,
             n_track_iters=config.n_track_iters,
             crop_ratio=config.crop_ratio,

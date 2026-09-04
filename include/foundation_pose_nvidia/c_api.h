@@ -210,6 +210,7 @@ typedef enum fp_precision {
  */
 typedef struct fp_config {
   int n_hypotheses;      /**< Register pose hypotheses (rotation grid size), default 252. */
+  int batch_size;        /**< Mini-batch chunk size for TensorRT execution, default 252. */
   int n_refine_iters;    /**< RefineNet iterations in register mode, default 5. */
   int n_track_iters;     /**< RefineNet iterations in track mode, default 2. */
   float crop_ratio;      /**< Crop box size as a multiple of object diameter, default 1.2. */

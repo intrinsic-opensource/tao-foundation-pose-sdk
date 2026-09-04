@@ -28,6 +28,7 @@ class CreateOptions(C.Structure):
 class Config(C.Structure):
     _fields_ = [
         ("n_hypotheses", C.c_int),
+        ("batch_size", C.c_int),
         ("n_refine_iters", C.c_int),
         ("n_track_iters", C.c_int),
         ("crop_ratio", C.c_float),

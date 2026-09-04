@@ -63,6 +63,9 @@ Config toConfig(const fp_config_t* input) {
   if (input->n_hypotheses > 0) {
     config.n_hypotheses = input->n_hypotheses;
   }
+  if (input->batch_size > 0) {
+    config.batch_size = input->batch_size;
+  }
   if (input->n_refine_iters >= 0) {
     config.n_refine_iters = input->n_refine_iters;
   }
@@ -264,6 +267,7 @@ void fp_default_config(fp_config_t* config) {
   }
   Config defaults;
   config->n_hypotheses = defaults.n_hypotheses;
+  config->batch_size = defaults.batch_size;
   config->n_refine_iters = defaults.n_refine_iters;
   config->n_track_iters = defaults.n_track_iters;
   config->crop_ratio = defaults.crop_ratio;

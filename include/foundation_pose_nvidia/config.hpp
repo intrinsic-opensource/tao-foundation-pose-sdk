@@ -19,6 +19,7 @@ enum class TensorrtPrecision { kFP32 = 0, kTF32 = 1, kFP16 = 2, kBF16 = 3 };
 
 struct Config {
   int n_hypotheses = 252;
+  int batch_size = 252;  // Mini-batch chunk size for TensorRT execution (effective bs = min(n_hypotheses, batch_size))
   int n_refine_iters = 5;
   int n_track_iters = 2;
   float crop_ratio = 1.2f;
