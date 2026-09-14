@@ -140,7 +140,11 @@ the default build contains no nvdiffrast code.
 
 ## Contribution Guidelines
 
-This project is currently not accepting contributions. The product roadmap is
-managed internally by NVIDIA.
+By contributing to this project, you agree that your contributions will be licensed under its [Apache License, Version 2.0](LICENSE). 
+The product roadmap is managed by NVIDIA.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual-licensed/licensed under those terms without any additional conditions.
+
+[Contribution Rules](CONTRIBUTING.md)
 
 [Apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
