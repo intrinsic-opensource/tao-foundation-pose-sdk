@@ -27,7 +27,6 @@ class RuntimeConfig:
     """Python-facing runtime configuration (maps to fp_config_t)."""
 
     n_hypotheses: int | None = None
-    batch_size: int | None = None
     n_refine_iters: int | None = None
     n_track_iters: int | None = None
     crop_ratio: float | None = None
@@ -37,6 +36,9 @@ class RuntimeConfig:
     max_image_height: int | None = None
     capture_cuda_graph: bool | None = None
     tensorrt_precision: Precision | int | None = None
+    # Appended last so positional construction of the pre-existing fields is
+    # unchanged (mirrors the fp_config_t append-only layout).
+    batch_size: int | None = None
 
     def to_ctypes(self, library: FPLibrary) -> Config:
         config = library.default_config()
@@ -53,7 +55,6 @@ class RuntimeConfig:
     def from_ctypes(cls, config: Config) -> RuntimeConfig:
         return cls(
             n_hypotheses=config.n_hypotheses,
-            batch_size=config.batch_size,
             n_refine_iters=config.n_refine_iters,
             n_track_iters=config.n_track_iters,
             crop_ratio=config.crop_ratio,
@@ -63,4 +64,5 @@ class RuntimeConfig:
             max_image_height=config.max_image_height,
             capture_cuda_graph=bool(config.capture_cuda_graph),
             tensorrt_precision=Precision(config.tensorrt_precision),
+            batch_size=config.batch_size,
         )

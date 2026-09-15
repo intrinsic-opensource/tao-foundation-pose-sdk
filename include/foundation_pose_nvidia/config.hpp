@@ -19,7 +19,6 @@ enum class TensorrtPrecision { kFP32 = 0, kTF32 = 1, kFP16 = 2, kBF16 = 3 };
 
 struct Config {
   int n_hypotheses = 252;
-  int batch_size = 252;  // Mini-batch chunk size for TensorRT execution (effective bs = min(n_hypotheses, batch_size))
   int n_refine_iters = 5;
   int n_track_iters = 2;
   float crop_ratio = 1.2f;
@@ -64,6 +63,10 @@ struct Config {
   // Default matches TensorRT's own default (TF32 allowed). Set kFP32 for strict
   // IEEE FP32 (recommended for cross-GPU accuracy parity, e.g. x86 vs Jetson).
   TensorrtPrecision tensorrt_precision = TensorrtPrecision::kTF32;
+  // Mini-batch chunk size for TensorRT execution; effective batch is
+  // min(n_hypotheses, batch_size) and must divide n_hypotheses. Appended last
+  // to mirror fp_config_t, whose member offsets are ABI-stable.
+  int batch_size = 252;
 };
 
 struct RuntimeOptions {

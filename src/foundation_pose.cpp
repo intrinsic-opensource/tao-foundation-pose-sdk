@@ -334,6 +334,21 @@ PoseEstimate FoundationPose::registerFrame(const std::uint8_t* rgb_u8,
                               ") must be divisible by batch_size (" +
                               std::to_string(effective_bs) + ")");
   }
+  // Micro-batching and CUDA graph capture are mutually exclusive. Chunked
+  // refinement rebinds the shared TensorRT execution context between chunks and
+  // must synchronize the stream in between, which CUDA forbids while the stream
+  // is capturing: the capture would fail deep inside enqueueRefine with an
+  // opaque error. Reject the combination here, where the message can name both
+  // settings. Tracking is unaffected (batch size 1 never chunks).
+  if (config_.capture_cuda_graph && effective_bs < active_hypotheses_) {
+    throw FoundationPoseError(
+        "capture_cuda_graph is not supported with inference micro-batching: batch_size (" +
+        std::to_string(effective_bs) + ") is smaller than active_hypotheses (" +
+        std::to_string(active_hypotheses_) +
+        "), so refinement would run in multiple TensorRT chunks that cannot be captured "
+        "into a CUDA graph. Raise batch_size to at least active_hypotheses, or disable "
+        "capture_cuda_graph.");
+  }
 
   uploadFrameToDevice(rgb_u8, depth_m, mask_u8, width, height, *workspace_,
                       stream_->get());

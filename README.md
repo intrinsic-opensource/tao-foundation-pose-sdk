@@ -116,6 +116,8 @@ By default, all hypotheses are executed in a single TensorRT batch (`batch_size 
 
 - **Lower VRAM footprint:** TensorRT engines and intermediate activation buffers are allocated to fit the smaller batch size, significantly reducing peak device memory during registration.
 - **Full search coverage preserved:** The total search coverage (`n_hypotheses`) remains unchanged; hypotheses are evaluated sequentially across chunks with zero accuracy loss.
+- **Must divide the hypothesis count:** when `batch_size` is smaller than the active hypothesis count, it must divide that count exactly. There is no partial final chunk — a non-divisible pair (e.g. `n_hypotheses = 100` with `batch_size = 42`) is rejected by `fp_register_frame` / `FoundationPose::registerFrame` with a `FoundationPoseError`. The suggested values below (42, 63, 126) all divide the default 252.
+- **Not compatible with `capture_cuda_graph`:** chunked refinement must synchronize the CUDA stream between chunks, which is illegal during graph capture. Enabling both is rejected with a `FoundationPoseError` whenever `batch_size` is smaller than the active hypothesis count. This only affects registration; tracking runs at batch size 1, never chunks, and keeps working with graph capture enabled.
 
 ```python
 from foundation_pose_nvidia import Estimator, EstimatorOptions, RuntimeConfig
