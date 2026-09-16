@@ -44,8 +44,8 @@ inference backend** through the C++ interfaces.
 ## Requirements
 
 - **NVIDIA driver ≥ 580** (the minimum driver line for CUDA 13).
-- **FoundationPose ONNX weights** — `refiner_net.onnx`, `score_net.onnx` from NGC
-  [`nvidia/tao/foundationpose:deployable_v1.0`](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tao/models/foundationpose)
+- **FoundationPose ONNX weights** — `refiner_net.onnx`, `score_net.onnx` from Hugging Face
+  [`nvidia/foundationpose`](https://huggingface.co/nvidia/foundationpose)
   (or `scripts/download_weights.sh`).
 - Everything runs **inside a container** (`nvcr.io/nvidia/pytorch:26.05-py3`, which
   bundles CUDA 13.2 and TensorRT 10.16); only Docker with the NVIDIA Container
@@ -171,7 +171,11 @@ the default build contains no nvdiffrast code.
 
 ## Contribution Guidelines
 
-This project is currently not accepting contributions. The product roadmap is
-managed internally by NVIDIA.
+By contributing to this project, you agree that your contributions will be licensed under its [Apache License, Version 2.0](LICENSE). 
+The product roadmap is managed by NVIDIA.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual-licensed/licensed under those terms without any additional conditions.
+
+[Contribution Rules](CONTRIBUTING.md)
 
 [Apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
