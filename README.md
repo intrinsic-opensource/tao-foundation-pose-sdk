@@ -114,10 +114,8 @@ FoundationPose registration mode evaluates candidate rotation hypotheses (defaul
 
 By default, all hypotheses are executed in a single TensorRT batch (`batch_size = 252`). You can configure `batch_size` (via C ABI `fp_config_t::batch_size`, C++ `Config::batch_size`, or Python `RuntimeConfig(batch_size=...)`) to chunk TensorRT execution into smaller mini-batches (e.g. 42, 63, or 126):
 
-- **Lower VRAM footprint:** TensorRT engines and intermediate activation buffers are allocated to fit the smaller batch size, significantly reducing peak device memory during registration.
-- **Full search coverage preserved:** The total search coverage (`n_hypotheses`) remains unchanged; hypotheses are evaluated sequentially across chunks with zero accuracy loss.
-- **Must divide the hypothesis count:** when `batch_size` is smaller than the active hypothesis count, it must divide that count exactly. There is no partial final chunk — a non-divisible pair (e.g. `n_hypotheses = 100` with `batch_size = 42`) is rejected by `fp_register_frame` / `FoundationPose::registerFrame` with a `FoundationPoseError`. The suggested values below (42, 63, 126) all divide the default 252.
-- **Not compatible with `capture_cuda_graph`:** chunked refinement must synchronize the CUDA stream between chunks, which is illegal during graph capture. Enabling both is rejected with a `FoundationPoseError` whenever `batch_size` is smaller than the active hypothesis count. This only affects registration; tracking runs at batch size 1, never chunks, and keeps working with graph capture enabled.
+- **Lower VRAM footprint:** RefineNet's TensorRT engine and activation buffers are allocated to fit the smaller batch size, reducing peak device memory during registration (ScoreNet uses cross-hypothesis attention and always runs at full batch).
+- **Full search coverage preserved:** The total search coverage (`n_hypotheses`) remains unchanged; RefineNet hypotheses are evaluated sequentially across chunks. Note that `batch_size` must divide `n_hypotheses` and cannot be combined with `capture_cuda_graph`.
 
 ```python
 from foundation_pose_nvidia import Estimator, EstimatorOptions, RuntimeConfig
@@ -136,7 +134,7 @@ When compiling TensorRT engines from ONNX (`refiner_net.onnx` and `score_net.onn
 
 Lowering the workspace size on lower-memory GPUs (e.g. 8 GB–16 GB cards or embedded platforms) **requires lowering `batch_size` accordingly**. The workspace needed by TensorRT's builder scales directly with the optimization profile's batch dimension:
 - In testing, building an engine with the default batch size of **252 requires at least ~6.1 GB** of builder workspace.
-- To successfully compile engines under constrained workspace limits (e.g. 2–4 GB), pair the reduced workspace with a smaller micro-batch size (such as 42, 63, or 126). This prevents out-of-memory errors during initial build without affecting downstream accuracy.
+- To successfully compile RefineNet under constrained workspace limits (e.g. 2–4 GB), pair the reduced workspace with a smaller micro-batch size (such as 42, 63, or 126). Note that ScoreNet always builds and runs at full batch.
 
 ## Performance at a Glance
 

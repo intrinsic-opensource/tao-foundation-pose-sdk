@@ -42,8 +42,6 @@ Logger& logger() {
   return instance;
 }
 
-constexpr int kMaxTensorRtEngineBatch = 256;
-
 enum class EngineKind { Refine, Score };
 
 // Short tag used in the engine-cache filename so plans self-invalidate when the
@@ -478,12 +476,13 @@ TensorRtRunner::Engine& TensorRtRunner::refineEngine() {
   return *refine_;
 }
 
+// ScoreNet attends across hypotheses; always use max_batch_ (never micro-batched).
 TensorRtRunner::Engine& TensorRtRunner::scoreEngine() {
   if (!score_) {
     auto shared = sharedEngineFor(EngineKind::Score, options_.score_model_path,
-                                  options_, config_, engine_batch_);
+                                  options_, config_, max_batch_);
     score_ = std::make_unique<Engine>(std::move(shared), options_, config_,
-                                      engine_batch_);
+                                      max_batch_);
   }
   return *score_;
 }
@@ -529,16 +528,7 @@ void TensorRtRunner::enqueueScore(const float* rendered,
   if (batch_size <= 0 || batch_size > max_batch_) {
     throw FoundationPoseError("TensorRT score batch size exceeds configured maximum");
   }
-  const int input_stride = config_.n_channels * config_.input_height * config_.input_width;
-  for (int offset = 0; offset < batch_size; offset += engine_batch_) {
-    const int chunk = std::min(engine_batch_, batch_size - offset);
-    scoreEngine().enqueueScore(rendered + static_cast<std::size_t>(offset) * input_stride,
-                               observed + static_cast<std::size_t>(offset) * input_stride,
-                               scores + offset, chunk, stream);
-    if (offset + chunk < batch_size) {
-      checkCuda(cudaStreamSynchronize(stream), "cudaStreamSynchronize TensorRT score chunk");
-    }
-  }
+  scoreEngine().enqueueScore(rendered, observed, scores, batch_size, stream);
 }
 
 }  // namespace foundation_pose_nvidia
